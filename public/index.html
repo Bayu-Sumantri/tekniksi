@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="id">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <meta content="#111827" name="theme-color"/>
+  <title>
+   Inventaris Teknisi — Sistem Inventaris
+  </title>
+  <link href="/style.css" rel="stylesheet"/>
+ </head>
+ <body>
+  <div class="login-wrap" id="login">
+   <form class="login-card" id="loginForm">
+    <div class="logo">
+     I
+    </div>
+    <p class="eyebrow">
+     SISTEM INVENTARIS TEKNISI
+    </p>
+    <h1>
+     Selamat datang
+    </h1>
+    <p class="muted">
+     Masuk untuk mengelola inventaris.
+    </p>
+    <p class="login-hint">
+     Login awal:
+     <b>
+      admin
+     </b>
+     /
+     <b>
+      admin
+     </b>
+     . Segera ganti password setelah masuk.
+    </p>
+    <label>
+     Username
+     <input autocomplete="username" autofocus="" name="username" required=""/>
+    </label>
+    <label>
+     Password
+     <input autocomplete="current-password" name="password" required="" type="password"/>
+    </label>
+    <button class="primary wide">
+     Masuk
+    </button>
+    <p class="error" id="loginError">
+    </p>
+   </form>
+  </div>
+  <div class="hidden" id="app">
+   <aside class="sidebar">
+    <div class="brand">
+     <div class="logo small">
+      I
+     </div>
+     <div>
+      <b>
+       INVENTARIS
+      </b>
+      <small>
+       TECHNICIAN INVENTORY
+      </small>
+     </div>
+    </div>
+    <nav>
+     <button class="nav active" data-page="dashboard">
+      ▦ Dashboard
+     </button>
+     <button class="nav" data-page="items">
+      ▤ Data Barang
+     </button>
+     <button class="nav" data-page="transactions">
+      ⇄ Aktivitas Barang
+     </button>
+     <button class="nav" data-page="withdraw">
+      ↶ Tarik Barang
+     </button>
+     <button class="nav" data-page="history">
+      ◷ Histori
+     </button>
+     <button class="nav admin-only" data-page="users">
+      ♙ Pengguna
+     </button>
+     <button class="nav" data-page="settings">
+      ⚙ Pengaturan
+     </button>
+    </nav>
+    <div class="side-bottom">
+     <span class="dot">
+     </span>
+     Database Excel lokal
+     <small>
+      Data tersimpan di komputer ini
+     </small>
+    </div>
+   </aside>
+   <main>
+    <header>
+     <div>
+      <p class="eyebrow">
+       INVENTARIS TEKNISI
+      </p>
+      <h1 id="heading">
+       Dashboard
+      </h1>
+     </div>
+     <div class="profile">
+      <span id="who">
+      </span>
+      <button class="outline" id="logout">
+       Keluar
+      </button>
+     </div>
+    </header>
+    <section class="page" id="dashboard">
+     <div class="intro">
+      <div>
+       <h2>
+        Ringkasan Inventaris Teknisi
+       </h2>
+       <p class="muted">
+        Pantau stok dan aktivitas barang secara langsung.
+       </p>
+      </div>
+      <button class="primary admin-only" data-open="itemDialog">
+       ＋ Tambah barang
+      </button>
+     </div>
+     <div class="stats">
+      <article>
+       <span>
+        Total jenis barang
+       </span>
+       <strong id="sTypes">
+        0
+       </strong>
+      </article>
+      <article>
+       <span>
+        Total stok tersedia
+       </span>
+       <strong id="sStock">
+        0
+       </strong>
+      </article>
+      <article>
+       <span>
+        Stok menipis (≤ 5)
+       </span>
+       <strong id="sLow">
+        0
+       </strong>
+      </article>
+      <article>
+       <span>
+        Aktivitas Barang hari ini
+       </span>
+       <strong id="sToday">
+        0
+       </strong>
+      </article>
+     </div>
+     <article class="panel admin-only alert-panel" id="stockAlertsPanel">
+      <div class="panel-head">
+       <div>
+        <h3>⚠ Peringatan stok untuk pengurus</h3>
+        <p class="muted">Barang dengan stok 5 unit atau kurang perlu diperiksa.</p>
+       </div>
+       <span class="alert-count" id="alertCount">0</span>
+      </div>
+      <div id="stockAlerts" class="alert-list"></div>
+     </article>
+     <article class="panel">
+      <div class="panel-head">
+       <div>
+        <h3>
+         Aktivitas terbaru
+        </h3>
+        <p class="muted">
+         Riwayat perubahan stok terakhir
+        </p>
+       </div>
+       <button class="text" data-page="history">
+        Lihat semua →
+       </button>
+      </div>
+      <div class="table-wrap">
+       <table>
+        <thead>
+         <tr>
+          <th>
+           TANGGAL
+          </th>
+          <th>
+           BARANG
+          </th>
+          <th>
+           JENIS
+          </th>
+          <th>
+           JUMLAH
+          </th>
+          <th>
+           KETERANGAN
+          </th>
+         </tr>
+        </thead>
+        <tbody id="recent">
+        </tbody>
+       </table>
+      </div>
+     </article>
+    </section>
+    <section class="page hidden" id="items">
+     <div class="intro">
+      <div>
+       <h2>
+        Data Barang
+       </h2>
+       <p class="muted">
+        Tambah, ubah, dan pantau stok barang.
+       </p>
+      </div>
+      <button class="primary admin-only" data-open="itemDialog">
+       ＋ Tambah barang
+      </button>
+     </div>
+     <input class="search" id="search" placeholder="Cari nama atau kategori barang..."/>
+     <article class="panel">
+      <div class="table-wrap">
+       <table>
+        <thead>
+         <tr>
+          <th>
+           FOTO
+          </th>
+          <th>
+           NAMA BARANG
+          </th>
+          <th>
+           KATEGORI
+          </th>
+          <th>
+           STOK
+          </th>
+          <th>
+           DITAMBAHKAN
+          </th>
+          <th>
+           AKSI
+          </th>
+         </tr>
+        </thead>
+        <tbody id="itemsTable">
+        </tbody>
+       </table>
+      </div>
+     </article>
+    </section>
+    <section class="page hidden" id="transactions">
+     <div class="intro">
+      <div>
+       <h2>
+        Aktivitas Barang
+       </h2>
+       <p class="muted">
+        Catat barang masuk dan barang keluar untuk kebutuhan teknisi.
+       </p>
+      </div>
+     </div>
+     <div class="two">
+      <article class="panel admin-only">
+       <h3>
+        Barang masuk
+       </h3>
+       <form class="form" id="inForm">
+        <label>
+         Barang
+         <select class="item-select" name="itemId" required="">
+         </select>
+        </label>
+        <label>
+         Jumlah
+         <input min="1" name="quantity" required="" type="number"/>
+        </label>
+        <label>
+         Keterangan
+         <input name="purpose" placeholder="Contoh: Pembelian"/>
+        </label>
+        <label>
+         Catatan
+         <textarea name="note"></textarea>
+        </label>
+        <button class="primary">
+         Simpan barang masuk
+        </button>
+       </form>
+      </article>
+      <article class="panel">
+       <h3>
+        Barang keluar
+       </h3>
+       <form class="form" id="outForm">
+        <div id="outLines" class="line-list"></div>
+        <button class="secondary" type="button" id="addOutLine">+ Tambah barang</button>
+        <label>
+         Tujuan / keterangan
+         <input name="purpose" placeholder="Contoh: Dikirim ke cabang" required=""/>
+        </label>
+        <label>
+         Catatan
+         <textarea name="note"></textarea>
+        </label>
+        <button class="primary">
+         Simpan barang keluar
+        </button>
+       </form>
+      </article>
+     </div>
+    </section>
+    <section class="page hidden" id="withdraw">
+     <div class="intro">
+      <div>
+       <h2>
+        Barang Tarikan
+       </h2>
+       <p class="muted">
+        Pilih barang dari seluruh daftar master, masukkan jumlah yang ditarik, dan tulis alasannya.
+       </p>
+      </div>
+     </div>
+     <article class="panel narrow">
+      <form class="form" id="withdrawForm">
+       <div id="withdrawLines" class="line-list"></div>
+       <button class="secondary" type="button" id="addWithdrawLine">+ Tambah barang</button>
+       <label>
+        Alasan penarikan
+        <small>
+         (wajib diisi)
+        </small>
+        <textarea name="reason" placeholder="Contoh: Barang dikembalikan cabang karena rusak..." required=""></textarea>
+       </label>
+       <button class="primary">
+        Simpan barang tarikan
+       </button>
+      </form>
+     </article>
+    </section>
+    <section class="page hidden" id="history">
+     <div class="intro">
+      <div>
+       <h2>
+        Histori Aktivitas
+       </h2>
+       <p class="muted">
+        Semua perubahan stok, termasuk alasan penarikan.
+       </p>
+      </div>
+      <div class="export-actions admin-only">
+       <a class="secondary linkbtn" href="/api/export/pdf" target="_blank" rel="noopener">Rekap PDF</a>
+       <a class="primary linkbtn" href="/api/export/excel">Rekap Excel</a>
+      </div>
+     </div>
+     <div class="history-filters">
+       <button class="secondary active" data-history-filter="all">Semua</button>
+       <button class="secondary" data-history-filter="out">Barang Keluar</button>
+       <button class="secondary" data-history-filter="withdraw">Barang Tarikan</button>
+       <button class="secondary admin-only" data-history-filter="added">Penambahan Barang</button>
+       <button class="secondary admin-only" data-history-filter="in">Barang Masuk</button>
+      </div>
+     <article class="panel">
+      <div class="table-wrap">
+       <table>
+        <thead>
+         <tr>
+          <th>
+           FOTO
+          </th>
+          <th>
+           TANGGAL
+          </th>
+          <th>
+           BARANG
+          </th>
+          <th>
+           JENIS
+          </th>
+          <th>
+           JUMLAH
+          </th>
+          <th>
+           STOK AKHIR
+          </th>
+          <th>
+           KETERANGAN / ALASAN
+          </th>
+          <th>
+           PENCATAT
+          </th>
+         </tr>
+        </thead>
+        <tbody id="historyTable">
+        </tbody>
+       </table>
+      </div>
+     </article>
+    </section>
+    <section class="page hidden admin-only" id="users">
+     <div class="intro">
+      <div>
+       <h2>
+        Manajemen pengguna
+       </h2>
+       <p class="muted">
+        Hanya admin yang dapat membuat dan menghapus akun.
+       </p>
+      </div>
+     </div>
+     <div class="two">
+      <article class="panel">
+       <h3>
+        Tambah pengguna
+       </h3>
+       <form class="form" id="userForm">
+        <label>
+         Username
+         <input maxlength="30" minlength="3" name="username" required=""/>
+        </label>
+        <label>
+         Password
+         <input minlength="10" name="password" required="" type="password"/>
+         <small>
+          Minimal 10 karakter. Password yang kamu tentukan akan disimpan sebagai hash bcrypt di Excel.
+         </small>
+        </label>
+        <label>
+         Hak akses
+         <select name="role">
+          <option value="user">
+           User biasa
+          </option>
+          <option value="admin">
+           Admin
+          </option>
+         </select>
+        </label>
+        <button class="primary">
+         Buat akun
+        </button>
+       </form>
+      </article>
+      <article class="panel">
+       <h3>
+        Daftar pengguna
+       </h3>
+       <div id="userList">
+       </div>
+      </article>
+     </div>
+    </section>
+    <section class="page hidden" id="settings">
+     <div class="two">
+      <article class="panel">
+       <h3>
+        Ganti password
+       </h3>
+       <form class="form" id="passwordForm">
+        <label>
+         Password lama
+         <input name="oldPassword" required="" type="password"/>
+        </label>
+        <label>
+         Password baru
+         <input minlength="10" name="newPassword" required="" type="password"/>
+        </label>
+        <label>
+         Ulangi password baru
+         <input minlength="10" name="confirmPassword" required="" type="password"/>
+        </label>
+        <button class="primary">
+         Perbarui password
+        </button>
+       </form>
+      </article>
+      <article class="panel">
+       <h3>
+        Database &amp; backup
+       </h3>
+       <p class="muted">
+        Seluruh data disimpan pada file Excel di folder
+        <code>
+         data/inventaris.xlsx
+        </code>
+        . Password akun tersimpan sebagai hash bcrypt, bukan teks biasa dan tidak dapat dibaca kembali dari Excel.
+       </p>
+       <a class="primary linkbtn admin-only" href="/api/backup">
+        ↓ Unduh backup Excel
+       </a>
+       <p class="muted tiny">
+        Simpan backup di lokasi aman secara berkala. Jangan bagikan file database kepada orang lain.
+       </p>
+      </article>
+     </div>
+    </section>
+   </main>
+  </div>
+  <dialog id="itemDialog">
+   <form class="form" id="itemForm">
+    <div class="dialog-head">
+     <div>
+      <h2 id="itemTitle">
+       Tambah barang
+      </h2>
+      <p class="muted">
+       Isi informasi barang inventaris.
+      </p>
+     </div>
+     <button class="close" data-close="" type="button">
+      ×
+     </button>
+    </div>
+    <input name="id" type="hidden"/>
+    <label>
+     Foto barang
+     <input accept="image/*" name="photo" type="file"/>
+     <small>Foto otomatis diperkecil sebelum disimpan.</small>
+    </label>
+    <img id="itemPhotoPreview" class="photo-preview hidden" alt="Pratinjau foto barang"/>
+    <button id="removeItemPhoto" class="danger hidden" type="button">Hapus foto tersimpan</button>
+    <label>
+     Nama barang
+     <input maxlength="100" name="name" required=""/>
+    </label>
+    <label>
+     Kategori
+     <input maxlength="60" name="category"/>
+    </label>
+    <label>
+     Stok awal
+     <input min="0" name="stock" required="" type="number"/>
+    </label>
+    <div class="actions">
+     <button class="outline" data-close="" type="button">
+      Batal
+     </button>
+     <button class="primary">
+      Simpan
+     </button>
+    </div>
+   </form>
+  </dialog>
+  <div class="toast" id="toast" role="alert" aria-live="assertive">
+  </div>
+  <script defer="" src="/app.js">
+  </script>
+ </body>
+</html>
+
