@@ -1,0 +1,1 @@
+import {redirect} from 'next/navigation';import {requireUser} from '@/lib/auth';import Workspace from '@/components/Workspace';export default async function Page(){let user;try{user=await requireUser()}catch{redirect('/login')}return <Workspace user={user}/>}

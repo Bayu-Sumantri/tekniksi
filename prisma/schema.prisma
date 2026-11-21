@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id
+  username     String    @unique
+  passwordHash String
+  role         String    @default("user")
+  createdAt    DateTime  @default(now())
+  history      History[]
+}
+
+model Item {
+  id        String    @id
+  name      String
+  category  String    @default("")
+  stock     Int       @default(0)
+  imagePath String    @default("")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  history   History[]
+  @@index([name])
+  @@index([category])
+}
+
+model History {
+  id        String   @id
+  createdAt DateTime @default(now())
+  type      String
+  itemId    String?
+  itemName  String
+  quantity  Int
+  before    Int
+  after     Int
+  purpose   String   @default("")
+  note      String   @default("")
+  relatedId String   @default("")
+  createdBy String
+  imagePath String   @default("")
+  userId    String?
+  item      Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@index([createdAt])
+  @@index([itemId])
+  @@index([type])
+}
