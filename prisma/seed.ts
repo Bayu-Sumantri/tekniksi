@@ -1,0 +1,2 @@
+import {PrismaClient} from '@prisma/client';import bcrypt from 'bcryptjs';const db=new PrismaClient();
+async function main(){if(await db.user.count())return;await db.user.create({data:{id:'USR-admin-awal',username:'admin',passwordHash:bcrypt.hashSync(process.env.INITIAL_ADMIN_PASSWORD||'admin',12),role:'admin'}});console.log('Admin awal dibuat. Segera ganti password.');}main().finally(()=>db.$disconnect());
