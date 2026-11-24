@@ -49,4 +49,21 @@ model History {
   @@index([createdAt])
   @@index([itemId])
   @@index([type])
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+  @@index([relatedId])
+}
+
+
+model BulkApprovalCode {
+  id                 String   @id
+  codeHash           String   @unique
+  createdByUsername  String
+  usedByUsername     String?
+  createdAt          DateTime @default(now())
+  expiresAt          DateTime
+  usedAt             DateTime?
+
+  @@index([expiresAt, usedAt])
+  @@index([createdAt])
 }

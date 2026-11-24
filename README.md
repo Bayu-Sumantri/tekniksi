@@ -1,118 +1,371 @@
-# Tekniksi — Next.js + TypeScript + PostgreSQL
+# Tekniksi — Sistem Informasi Inventaris Teknisi
 
-Migrasi aplikasi inventaris teknisi dari Express + HTML/JavaScript + ExcelJS ke Next.js App Router, TypeScript, Prisma ORM, dan PostgreSQL.
+Aplikasi inventaris berbasis web untuk mengelola data barang, stok, aktivitas barang masuk/keluar, barang tarikan, histori, dan akun pengguna.
 
-## Fitur yang dibawa
+> **Status data contoh:** paket seed skala besar yang direncanakan menghasilkan 10.000 data barang dan sekitar 45.000 histori merupakan data simulasi untuk pengujian/demo, bukan catatan inventaris nyata. Jangan gunakan data simulasi sebagai data operasional.
 
-- Login dan hak akses Admin/User; password tetap memakai bcrypt.
-- Dashboard: jumlah jenis barang, total stok, peringatan stok ≤ 5, dan aktivitas terakhir.
-- Master inventaris: tambah, ubah stok/nama/kategori, hapus barang. Riwayat transaksi tetap menyimpan nama barang meski master barang dihapus.
-- Barang masuk (admin), barang keluar (admin/user), dan barang tarikan (admin/user).
-- Validasi stok tidak minus; barang tarikan dibatasi jumlah barang keluar yang belum ditarik.
-- Histori transaksi, manajemen akun, ganti password, backup JSON, ekspor Excel dan PDF.
-- UI baru responsif dengan navigasi sidebar, ringkasan kartu, tabel, dan formulir.
+## Daftar Isi
+
+- [Fitur](#fitur)
+- [Teknologi](#teknologi)
+- [Persyaratan](#persyaratan)
+- [Persiapan PostgreSQL](#persiapan-postgresql)
+- [Instalasi](#instalasi)
+- [Konfigurasi Environment](#konfigurasi-environment)
+- [Menyiapkan Database dengan Prisma](#menyiapkan-database-dengan-prisma)
+- [Menjalankan Aplikasi](#menjalankan-aplikasi)
+- [Build Production](#build-production)
+- [Pengisian Data Contoh Skala Besar](#pengisian-data-contoh-skala-besar)
+- [Menjaga Akun Admin dan User](#menjaga-akun-admin-dan-user)
+- [Backup dan Restore](#backup-dan-restore)
+- [Troubleshooting](#troubleshooting)
+- [Keamanan](#keamanan)
+
+## Fitur
+
+- Dashboard ringkasan inventaris.
+- Pengelolaan data barang dan stok.
+- Pencatatan barang masuk dan barang keluar.
+- Pengelolaan barang tarikan.
+- Histori aktivitas inventaris.
+- Login dan hak akses berdasarkan role.
+- Kode persetujuan untuk proses tertentu (jika fitur tersebut tersedia pada versi source yang digunakan).
+- Database relasional PostgreSQL melalui Prisma ORM.
+
+Nama menu dan ketersediaan fitur mengikuti versi source code yang dipasang.
+
+## Teknologi
+
+- Next.js 15
+- React 19
+- TypeScript
+- PostgreSQL
+- Prisma ORM 6
+- Tailwind CSS
+- bcryptjs
+- Lucide React
 
 ## Persyaratan
 
-- Node.js 20.9 atau lebih baru
-- PostgreSQL 14 atau lebih baru
-- npm
+Pastikan perangkat sudah memiliki:
 
-## Instalasi lokal
+1. Node.js versi LTS yang kompatibel dengan Next.js 15 (disarankan Node.js 20.9 atau lebih baru).
+2. npm (biasanya sudah ikut terpasang bersama Node.js).
+3. PostgreSQL 14 atau lebih baru.
+4. Git (opsional, jika mengambil source dari repository).
 
-1. Ekstrak project, lalu buka terminal pada folder `tekniksi-main`.
-2. Jalankan `npm install`.
-3. Salin `.env.example` menjadi `.env`, lalu isi koneksi PostgreSQL dan secret:
+Periksa instalasi:
 
-   ```env
-   DATABASE_URL="postgresql://postgres:password@localhost:5432/tekniksi?schema=public"
-   SESSION_SECRET="buat-random-secret-panjang-minimal-32-karakter"
-   APP_URL="http://localhost:3000"
-   ```
-
-4. Buat database kosong bernama `tekniksi` di PostgreSQL.
-5. Jalankan:
-
-   ```bash
-   npx prisma generate
-   npx prisma migrate dev --name init
-   npm run db:seed
-   npm run dev
-   ```
-
-6. Buka `http://localhost:3000`.
-
-Akun awal hanya dibuat jika tabel pengguna masih kosong: username `admin`, password default `admin` (atau isi `INITIAL_ADMIN_PASSWORD` sebelum seed). Ganti segera setelah login.
-
-## Migrasi data Excel lama
-
-> File ZIP kode sumber tidak menyertakan `data/inventaris.xlsx` maupun foto pengguna. Ambil keduanya dari instalasi lama sebelum memulai impor. Jangan menghapus atau menimpa folder data lama.
-
-1. Hentikan server aplikasi lama dan buat salinan cadangan folder `data/` secara utuh.
-2. Salin workbook lama ke lokasi yang dapat dibaca, misalnya `legacy/inventaris.xlsx`.
-3. Pastikan sheet bernama `Users`, `Items`, dan `Riwayat` (skrip juga menerima `History`). Header kolom harus sama dengan versi lama.
-4. Jalankan migrasi schema terlebih dahulu, lalu:
-
-   ```bash
-   npm run db:import-excel -- ./legacy/inventaris.xlsx
-   ```
-
-5. Skrip melakukan upsert berdasarkan ID, mempertahankan ID lama dan hash bcrypt. Jalankan impor satu kali setelah backup. Impor ulang akan memperbarui pengguna/barang dengan ID sama dan menghindari duplikasi riwayat.
-6. Salin folder foto lama `data/foto/` ke `public/foto/` (pertahankan subfolder dan nama file). Path foto relatif di database lama tetap disimpan; verifikasi URL foto di UI dan sesuaikan prefix path bila struktur lama berbeda.
-7. Bandingkan jumlah pengguna, barang, dan riwayat antara workbook lama dan database baru sebelum menjadikan PostgreSQL sebagai sumber data utama.
-
-### Skema data PostgreSQL
-
-- `User`: `id`, `username`, `passwordHash`, `role`, `createdAt`.
-- `Item`: `id`, `name`, `category`, `stock`, `imagePath`, `createdAt`, `updatedAt`.
-- `History`: `id`, `createdAt`, `type`, `itemId` (nullable), `itemName`, `quantity`, `before`, `after`, `purpose`, `note`, `relatedId`, `createdBy`, `imagePath`.
-
-`History.itemId` nullable dengan `onDelete: SetNull`, sehingga riwayat tetap ada saat master barang dihapus.
-
-## Operasional
-
-- Pengembangan: `npm run dev`
-- Build produksi: `npm run build`
-- Jalankan build: `npm start`
-- Perubahan schema: ubah `prisma/schema.prisma`, lalu `npx prisma migrate dev --name nama-perubahan`.
-- Backup data: login sebagai Admin, buka Pengaturan → Unduh Backup. Ekspor Excel tersedia melalui `/api/export/excel`, PDF melalui `/api/export/pdf`.
-
-## Hak akses
-
-| Fitur | Admin | User |
-|---|:---:|:---:|
-| Dashboard, inventaris, histori barang keluar/tarikan | ✓ | ✓ |
-| Barang masuk dan histori penuh | ✓ | — |
-| Tambah/edit/hapus master barang | ✓ | — |
-| Barang keluar dan barang tarikan | ✓ | ✓ |
-| Buat/hapus akun | ✓ | — |
-| Ekspor/backup | ✓ | — |
-| Ganti password sendiri | ✓ | ✓ |
-
-## Keamanan dan catatan migrasi
-
-- Session ditandatangani HMAC-SHA256 dan disimpan pada cookie HttpOnly, SameSite=Strict, Secure saat production, dengan masa berlaku 8 jam.
-- Password tidak pernah dikirim dalam endpoint daftar pengguna. Hash bcrypt lama dapat dipakai langsung.
-- Tetapkan `SESSION_SECRET` yang kuat, aktifkan TLS di production, batasi akses database, dan siapkan backup PostgreSQL rutin.
-- Untuk deployment multi-instance, gunakan session store terpusat (misalnya Redis/PostgreSQL) dan rate limiting terdistribusi. Session cookie bertanda tangan pada implementasi awal ini bersifat stateless.
-- Versi awal Next.js ini mempertahankan alur transaksi utama, tetapi UI foto barang/foto bukti, edit foto, hapus foto khusus, unggah multi-barang dalam satu formulir, dan tampilan laporan rinci belum disamakan sepenuhnya dengan versi lama. Data path foto tetap diimpor.
-- Sebelum go-live, lakukan UAT untuk transaksi paralel dan tinjau audit keamanan. Validasi transaksi menggunakan transaksi database, namun penguncian stok untuk konkurensi tinggi perlu ditambahkan (misalnya conditional update/serializable isolation).
-
-## Struktur folder
-
-```text
-src/app/                 Halaman Next.js dan API
-src/components/           Komponen antarmuka
-src/lib/                  Prisma, autentikasi, helper data
-prisma/schema.prisma      Skema PostgreSQL
-prisma/seed.ts            Admin awal
-scripts/import-excel.ts   Impor workbook Excel lama
+```bash
+node -v
+npm -v
+psql --version
 ```
 
-## Status verifikasi paket migrasi
+## Persiapan PostgreSQL
 
-Arsip hasil migrasi berisi kode sumber Next.js, skema Prisma, API, antarmuka baru, dan utilitas impor. Instalasi dependensi serta build belum dapat diverifikasi di lingkungan pembuatan ini karena proses pengambilan paket npm mengalami timeout. Jalankan langkah instalasi di atas pada komputer/server yang memiliki akses registry npm, kemudian selesaikan uji build dan UAT sebelum production.
+Buat database dan user khusus aplikasi. Masuk ke PostgreSQL sebagai administrator:
 
-## Status verifikasi paket migrasi
+```bash
+sudo -u postgres psql
+```
 
-Arsip hasil migrasi berisi kode sumber Next.js, skema Prisma, API, antarmuka baru, dan utilitas impor. Instalasi dependensi serta build belum dapat diverifikasi di lingkungan pembuatan ini karena proses pengambilan paket npm mengalami timeout. Jalankan langkah instalasi di atas pada komputer/server yang memiliki akses registry npm, kemudian selesaikan uji build dan UAT sebelum production.
+Jalankan SQL berikut dan ganti password contoh dengan password kuat milik sendiri:
+
+```sql
+CREATE USER tekniksi_user WITH PASSWORD 'GANTI_DENGAN_PASSWORD_KUAT';
+CREATE DATABASE tekniksi OWNER tekniksi_user;
+GRANT ALL PRIVILEGES ON DATABASE tekniksi TO tekniksi_user;
+\q
+```
+
+Uji koneksi:
+
+```bash
+psql "postgresql://tekniksi_user:GANTI_DENGAN_PASSWORD_KUAT@localhost:5432/tekniksi"
+```
+
+Jika berhasil masuk ke prompt `tekniksi=>`, keluar dengan `\q`.
+
+## Instalasi
+
+### 1. Masuk ke folder project
+
+Jika source sudah diunduh atau diekstrak:
+
+```bash
+cd /lokasi/folder/tekniksi
+```
+
+Pastikan `package.json` ada:
+
+```bash
+ls -la
+```
+
+### 2. Pasang dependency
+
+```bash
+npm install
+```
+
+### 3. Siapkan file environment
+
+Buat `.env` di root project (sejajar dengan `package.json`):
+
+```bash
+nano .env
+```
+
+Isi variabel minimal berikut. Sesuaikan dengan nama variabel yang benar-benar dibaca oleh source code project:
+
+```env
+DATABASE_URL="postgresql://tekniksi_user:GANTI_DENGAN_PASSWORD_KUAT@localhost:5432/tekniksi?schema=public"
+```
+
+Simpan file. Jangan unggah `.env` ke GitHub dan jangan membagikan password database.
+
+> Jika source menyediakan `.env.example`, jadikan file tersebut acuan utama. Tambahkan hanya variabel yang memang digunakan aplikasi; jangan menebak secret atau URL layanan lain.
+
+## Menyiapkan Database dengan Prisma
+
+Periksa schema:
+
+```bash
+npx prisma validate
+```
+
+Buat tabel database dari migration yang tersedia:
+
+```bash
+npx prisma migrate deploy
+```
+
+Jika project belum memiliki migration dan ini adalah database development yang masih kosong, buat migration awal:
+
+```bash
+npx prisma migrate dev --name init
+```
+
+Generate Prisma Client:
+
+```bash
+npx prisma generate
+```
+
+Buka Prisma Studio untuk melihat tabel dan data:
+
+```bash
+npx prisma studio
+```
+
+Jangan menjalankan `migrate dev` pada database production. Untuk production gunakan migration yang sudah dibuat dan `npx prisma migrate deploy`.
+
+## Menjalankan Aplikasi
+
+Mode development:
+
+```bash
+npm run dev
+```
+
+Buka browser:
+
+```text
+http://localhost:3000
+```
+
+Hentikan server dengan `Ctrl + C`.
+
+Untuk memeriksa script yang tersedia:
+
+```bash
+npm run
+```
+
+## Build Production
+
+```bash
+npx prisma generate
+npm run build
+npm run start
+```
+
+Aplikasi production secara default berjalan di `http://localhost:3000`. Pastikan environment production sudah diatur di server hosting dan database dapat dijangkau dari server tersebut.
+
+## Pengisian Data Contoh Skala Besar
+
+Seed skala besar yang dimaksud dalam pengembangan ini ditargetkan membuat **10.000 record barang** dan sekitar **45.000 record histori**. Angka histori dapat berubah sesuai implementasi final seed. Data tersebut adalah data sintetis untuk uji performa, pagination, pencarian, filter, dan tampilan dashboard.
+
+**Peringatan:** seed reset akan menghapus seluruh record pada tabel `Item` dan `History` sebelum membuat data baru. Operasi ini tidak boleh dijalankan pada database yang berisi data inventaris asli kecuali memang sudah dicadangkan dan pengguna menyetujui penggantian tersebut.
+
+Sebelum menjalankan seed:
+
+1. Pastikan `DATABASE_URL` mengarah ke database yang benar.
+2. Buat backup database.
+3. Pastikan akun admin/user yang ingin dipertahankan memang sudah ada di tabel `User`.
+4. Baca implementasi `prisma/seed.ts` dan pastikan script hanya menghapus `Item` dan `History`, bukan `User`.
+5. Jalankan seed hanya setelah memastikan target database bukan database production berisi data nyata.
+
+Jika `package.json` telah mengatur perintah seed Prisma, jalankan:
+
+```bash
+npx prisma db seed
+```
+
+Jika belum ada konfigurasi seed, periksa `package.json` dan `prisma/seed.ts` terlebih dahulu. Konfigurasi perintah seed bergantung pada versi Prisma dan konfigurasi project; jangan menambahkan perintah secara asal.
+
+Setelah proses selesai, verifikasi jumlah record menggunakan Prisma Studio atau SQL:
+
+```sql
+SELECT COUNT(*) AS total_users FROM "User";
+SELECT COUNT(*) AS total_items FROM "Item";
+SELECT COUNT(*) AS total_histories FROM "History";
+```
+
+Jumlah `User` sebelum dan sesudah seed harus sama. Untuk target seed ini, jumlah `Item` yang diharapkan adalah 10.000. Jumlah `History` mengikuti hasil aktual seed.
+
+## Menjaga Akun Admin dan User
+
+Desain reset data contoh yang diminta adalah:
+
+| Tabel | Tindakan |
+|---|---|
+| `User` | Dipertahankan; tidak dihapus, dibuat ulang, atau diubah oleh seed reset |
+| `Item` | Data lama dihapus lalu diganti data contoh baru |
+| `History` | Histori lama dihapus lalu diganti histori contoh baru |
+| `BulkApprovalCode` | Tidak boleh ikut dihapus kecuali memang ada instruksi dan alasan khusus |
+
+Pastikan implementasi seed menggunakan transaksi database agar jika pembuatan data gagal, penghapusan sebelumnya ikut dibatalkan. Gunakan batch insert agar jumlah data besar tidak dikirim dalam satu operasi raksasa.
+
+## Backup dan Restore
+
+### Backup
+
+```bash
+pg_dump -h localhost -U tekniksi_user -d tekniksi -F c -f tekniksi-backup.dump
+```
+
+### Restore
+
+Buat database tujuan kosong, lalu:
+
+```bash
+createdb -h localhost -U tekniksi_user tekniksi_restore
+pg_restore -h localhost -U tekniksi_user -d tekniksi_restore --clean --if-exists tekniksi-backup.dump
+```
+
+Simpan file backup di lokasi aman. Jangan commit file backup ke repository publik.
+
+## Troubleshooting
+
+### `P1001: Can't reach database server`
+
+- Pastikan service PostgreSQL berjalan:
+
+  ```bash
+  sudo systemctl status postgresql
+  ```
+- Pastikan host, port, username, password, dan nama database pada `DATABASE_URL` benar.
+- Pastikan PostgreSQL menerima koneksi dari host aplikasi.
+
+### `P1000: Authentication failed`
+
+Password atau username PostgreSQL salah. Uji koneksi langsung menggunakan `psql`, lalu perbarui `.env`.
+
+### `Prisma Client did not initialize` atau model tidak ditemukan
+
+Jalankan:
+
+```bash
+npx prisma generate
+```
+
+Pastikan schema yang digunakan adalah `prisma/schema.prisma`.
+
+### Tabel belum tersedia
+
+Jalankan migration:
+
+```bash
+npx prisma migrate deploy
+```
+
+Untuk database development baru tanpa migration, gunakan `npx prisma migrate dev --name init`.
+
+### Port 3000 sedang digunakan
+
+Jalankan Next.js pada port lain:
+
+```bash
+npm run dev -- --port 3001
+```
+
+Kemudian buka `http://localhost:3001`.
+
+### Login gagal
+
+- Pastikan akun memang ada di tabel `User`.
+- Pastikan password diverifikasi menggunakan mekanisme hash yang sesuai dengan aplikasi.
+- Jangan mengubah password hash secara manual tanpa memahami format yang dipakai.
+- Jangan membuat akun admin baru jika tujuanmu hanya mengganti data barang.
+
+### Seed gagal di tengah proses
+
+- Periksa pesan error lengkap di terminal.
+- Periksa koneksi dan kapasitas database.
+- Pastikan seed menggunakan transaksi dan batch insert.
+- Verifikasi kembali jumlah data. Jangan mengulang seed sebelum memahami apakah transaksi sebelumnya rollback atau sudah commit.
+
+## Keamanan
+
+- Gunakan password database yang kuat dan unik.
+- Jangan commit `.env`, credential, dump database, atau service-role key ke Git.
+- Batasi akses database hanya untuk host yang diperlukan.
+- Aktifkan HTTPS pada deployment publik.
+- Buat backup sebelum migration atau seed yang menghapus data.
+- Gunakan data simulasi hanya untuk development, staging, atau pengujian.
+- Jangan menaruh password akun dalam README.
+
+## Struktur Project (umum)
+
+```text
+tekniksi/
+├── prisma/
+│   ├── schema.prisma
+│   └── migrations/
+├── src/
+│   ├── app/
+│   └── components/
+├── public/
+├── .env
+├── package.json
+└── README.md
+```
+
+Struktur aktual dapat berbeda sesuai versi repository.
+
+## Lisensi dan Kontribusi
+
+Sesuaikan bagian lisensi, pemilik project, dan panduan kontribusi dengan kebijakan repository yang digunakan.
+
+
+## Reset data inventaris (akun pengguna tetap)
+
+Script ini menghapus seluruh baris `History`, `Item`, dan `BulkApprovalCode`, tetapi **tidak menghapus atau mengubah tabel `User`**. Jalankan hanya setelah membuat backup PostgreSQL.
+
+```bash
+pg_dump -Fc -d "$DATABASE_URL" -f tekniksi-before-reset.dump
+CONFIRM_CLEAR_INVENTORY=YES npm run db:clear-inventory-keep-users
+```
+
+Perintah di atas bersifat destruktif untuk data inventaris dan histori. Pastikan `DATABASE_URL` menunjuk database yang benar. Setelah reset, semua akun pengguna yang sudah ada tetap tersedia; kode persetujuan massal yang lama ikut dihapus agar tidak dapat digunakan kembali.
+
+## Catatan keamanan dan performa
+
+- Cookie sesi menggunakan `HttpOnly`, `SameSite=Strict`, `Secure` pada production, dan masa berlaku terbatas.
+- API mutasi memeriksa header `Origin` bila tersedia dan respons API diberi `Cache-Control: no-store`.
+- Header keamanan dasar aktif melalui konfigurasi Next.js. Login memiliki throttling sederhana per proses; untuk deployment multi-instance, tambahkan rate limiting pada reverse proxy/WAF atau Redis.
+- Gunakan HTTPS, `SESSION_SECRET` acak minimal 32 karakter, password kuat, PostgreSQL tidak diekspos ke internet, dan jangan commit `.env`.
+- Tidak ada jaminan aplikasi kebal dari semua serangan; lakukan audit dependency, backup, pemantauan log, dan pengujian sebelum production.
+- Layout memiliki aturan responsive, tabel dapat digeser horizontal pada layar kecil, dan halaman menampilkan skeleton saat data awal dimuat.
