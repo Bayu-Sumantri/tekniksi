@@ -251,7 +251,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
     const { path } = await params;
-    if (!sameOrigin(_req)) return json({ error: 'Origin tidak diizinkan.' }, 403);
+    if (!sameOrigin(req)) return json({ error: 'Origin tidak diizinkan.' }, 403);
     const [resource, id] = path;
     const user = await requireUser(true);
     if (resource !== 'items' || !id) return json({ error: 'Endpoint tidak ditemukan.' }, 404);
