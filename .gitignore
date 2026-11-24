@@ -6,3 +6,11 @@ node_modules
 /uploads
 /data
 *.log
+
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

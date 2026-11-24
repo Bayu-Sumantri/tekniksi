@@ -1,4 +1,7 @@
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import type { NextConfig } from 'next';
+
+initOpenNextCloudflareForDev();
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },

@@ -369,3 +369,76 @@ Perintah di atas bersifat destruktif untuk data inventaris dan histori. Pastikan
 - Gunakan HTTPS, `SESSION_SECRET` acak minimal 32 karakter, password kuat, PostgreSQL tidak diekspos ke internet, dan jangan commit `.env`.
 - Tidak ada jaminan aplikasi kebal dari semua serangan; lakukan audit dependency, backup, pemantauan log, dan pengujian sebelum production.
 - Layout memiliki aturan responsive, tabel dapat digeser horizontal pada layar kecil, dan halaman menampilkan skeleton saat data awal dimuat.
+
+
+## Deploy ke Cloudflare Workers (OpenNext + PostgreSQL Hyperdrive)
+
+Project ini disiapkan untuk Cloudflare Workers menggunakan OpenNext dan Prisma 6 dengan PostgreSQL driver adapter. Database PostgreSQL yang hanya berjalan di laptop (`localhost`) **tidak dapat diakses oleh Worker publik**. Untuk production, gunakan PostgreSQL yang memiliki endpoint jaringan publik/terkelola (misalnya Neon atau Supabase), lalu hubungkan melalui Cloudflare Hyperdrive.
+
+### 1. Siapkan database production
+
+- Buat PostgreSQL terkelola di provider pilihan.
+- Backup database lokal terlebih dahulu sebelum memindahkan data.
+- Import backup ke database tujuan dan verifikasi tabel `User`, `Item`, `History`, dan `BulkApprovalCode`.
+- Jangan jalankan reset/seed demo pada database yang berisi data asli.
+
+### 2. Install dan tes lokal
+
+```bash
+npm install
+cp .dev.vars.example .dev.vars
+# Edit .dev.vars dan isi DATABASE_URL serta SESSION_SECRET milik sendiri
+npx prisma generate
+npm run preview
+```
+
+### 3. Buat Hyperdrive
+
+Buat konfigurasi Hyperdrive dari connection string PostgreSQL production:
+
+```bash
+read -rsp 'PostgreSQL connection string: ' DB_URL; echo
+npx wrangler hyperdrive create tekniksi-db --connection-string="$DB_URL"
+unset DB_URL
+```
+
+Salin ID yang dikembalikan, lalu ganti `REPLACE_WITH_HYPERDRIVE_ID` pada bagian `hyperdrive` di `wrangler.jsonc`. Jangan menaruh password database ke file konfigurasi atau Git. Hyperdrive menyimpan konfigurasi koneksi di sisi Cloudflare.
+
+### 4. Atur secret Worker
+
+```bash
+npx wrangler secret put SESSION_SECRET
+```
+
+Masukkan secret acak minimal 32 karakter, misalnya hasil `openssl rand -base64 48`. Jangan commit `.env`, `.dev.vars`, atau kredensial.
+
+### 5. Terapkan migration dan deploy
+
+Jalankan migration production dari lingkungan tepercaya yang memiliki `DATABASE_URL` menuju database production:
+
+```bash
+npx prisma migrate deploy
+```
+
+Pastikan backup sudah tersedia dan `DATABASE_URL` menunjuk database tujuan yang benar. Perintah ini menerapkan migration yang ada; jangan gunakan `migrate reset`.
+
+Kemudian deploy:
+
+```bash
+npm run deploy
+```
+
+Worker akan menggunakan binding `HYPERDRIVE` untuk query PostgreSQL. Nama Worker dan self-reference sudah disamakan menjadi `tekniksi`.
+
+### Catatan penting
+
+- Setelah membuat Hyperdrive, tambahkan binding berikut di root `wrangler.jsonc` dan isi ID yang dikembalikan:
+
+```jsonc
+"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "ID_DARI_WRANGLER" }],
+```
+
+- Jangan deploy production sebelum binding Hyperdrive sudah ditambahkan dan database production sudah berisi migration serta data yang diperlukan.
+- Database lokal tetap bisa dipakai untuk pengembangan melalui `DATABASE_URL`, tetapi tidak menjadi database publik Cloudflare.
+- Migrasi data dari PostgreSQL lokal ke provider cloud adalah langkah terpisah; file source ini tidak menghapus atau memindahkan database secara otomatis.
+- Pastikan binding `HYPERDRIVE` tersedia di Worker production.
